@@ -137,7 +137,9 @@ export default function PDFEditor() {
 
     setIsSearching(true);
     try {
-      const matches = await findTextInPdf(pdfBytes, searchTerm.trim(), false);
+      // Use a copy to avoid detaching the original
+      const bytesCopy = pdfBytes.slice(0);
+      const matches = await findTextInPdf(bytesCopy, searchTerm.trim(), false);
       setSearchResults(matches);
     } catch (error) {
       console.error('Search failed:', error);
@@ -171,8 +173,10 @@ export default function PDFEditor() {
 
     setIsDetecting(true);
     try {
+      // Use a copy to avoid detaching the original
+      const bytesCopy = pdfBytes.slice(0);
       const patterns = Array.from(selectedPatterns) as ('ssn' | 'email' | 'phone' | 'credit_card')[];
-      const matches = await detectSensitivePatterns(pdfBytes, patterns);
+      const matches = await detectSensitivePatterns(bytesCopy, patterns);
       setPatternResults(matches);
     } catch (error) {
       console.error('Pattern detection failed:', error);
@@ -279,8 +283,11 @@ export default function PDFEditor() {
         height: r.height / UI_SCALE,
       }));
 
+      // Make a fresh copy of the bytes - previous operations may have detached the original
+      const freshBytes = pdfBytes.slice(0);
+
       // Apply true redaction (flattens to images)
-      const redactedPdf = await redactPdfByAreas(pdfBytes, pdfScaleRedactions);
+      const redactedPdf = await redactPdfByAreas(freshBytes, pdfScaleRedactions);
 
       // Verify the redaction worked (use PDF scale coordinates)
       const verification = await verifyRedaction(redactedPdf.buffer as ArrayBuffer, pdfScaleRedactions);
