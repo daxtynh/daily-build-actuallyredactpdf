@@ -85,9 +85,12 @@ export default function PDFEditor() {
     if (file && file.type === 'application/pdf') {
       setPdfFile(file);
       const bytes = await file.arrayBuffer();
-      setPdfBytes(bytes);
+      // Make a copy of the bytes - pdf.js transfers ownership of the original
+      const bytesCopy = bytes.slice(0);
+      setPdfBytes(bytesCopy);
 
-      const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+      // Use another copy for pdf.js document loading
+      const doc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
       setPdfDoc(doc);
       setTotalPages(doc.numPages);
       setCurrentPage(1);
@@ -470,7 +473,7 @@ export default function PDFEditor() {
             {currentPageRedactions.map((box) => (
               <div
                 key={box.id}
-                className="absolute bg-[#ff6b35]/30 border-2 border-[#ff6b35] cursor-pointer group"
+                className="absolute bg-[#ff6b35]/30 border-2 border-[#ff6b35] cursor-pointer"
                 style={{
                   left: box.x,
                   top: box.y,
@@ -479,9 +482,7 @@ export default function PDFEditor() {
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (tool === 'select') {
-                    removeRedaction(box.id);
-                  }
+                  removeRedaction(box.id);
                 }}
               >
                 <button
@@ -489,7 +490,8 @@ export default function PDFEditor() {
                     e.stopPropagation();
                     removeRedaction(box.id);
                   }}
-                  className="absolute -top-2 -right-2 w-5 h-5 bg-[#ef4444] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-0 right-0 w-5 h-5 bg-[#ef4444] rounded-full flex items-center justify-center shadow-lg"
+                  style={{ transform: 'translate(50%, -50%)' }}
                 >
                   <X className="w-3 h-3 text-white" />
                 </button>

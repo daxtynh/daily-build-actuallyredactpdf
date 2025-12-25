@@ -59,12 +59,14 @@ export default function BatchProcessor() {
     const newFiles: BatchFile[] = await Promise.all(
       pdfFiles.map(async (file) => {
         const bytes = await file.arrayBuffer();
-        const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+        // Make a copy - pdf.js transfers ownership of the original
+        const bytesCopy = bytes.slice(0);
+        const doc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
 
         return {
           id: crypto.randomUUID(),
           file,
-          bytes,
+          bytes: bytesCopy,
           pageCount: doc.numPages,
           status: 'pending' as const,
           patterns: [],
