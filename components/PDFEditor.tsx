@@ -146,15 +146,16 @@ export default function PDFEditor() {
     }
   };
 
-  // Add search results as redactions
+  // Add search results as redactions (scale to match canvas)
   const addSearchResultsAsRedactions = () => {
+    const SCALE = 1.5; // Must match render scale
     const newRedactions: RedactionBox[] = searchResults.map((match, index) => ({
       id: crypto.randomUUID(),
       pageIndex: match.pageIndex,
-      x: match.x,
-      y: match.y,
-      width: match.width,
-      height: match.height,
+      x: match.x * SCALE,
+      y: match.y * SCALE,
+      width: match.width * SCALE,
+      height: match.height * SCALE,
       source: 'search' as const,
       label: `"${searchTerm}" (${index + 1})`,
     }));
@@ -180,12 +181,17 @@ export default function PDFEditor() {
     }
   };
 
-  // Add pattern results as redactions
+  // Add pattern results as redactions (scale to match canvas)
   const addPatternResultsAsRedactions = () => {
+    const SCALE = 1.5; // Must match render scale
     const areas = patternMatchesToRedactions(patternResults);
     const newRedactions: RedactionBox[] = areas.map((area, index) => ({
       id: crypto.randomUUID(),
-      ...area,
+      pageIndex: area.pageIndex,
+      x: area.x * SCALE,
+      y: area.y * SCALE,
+      width: area.width * SCALE,
+      height: area.height * SCALE,
       source: 'pattern' as const,
       label: patternResults[index]?.patternType || 'pattern',
     }));
@@ -195,6 +201,12 @@ export default function PDFEditor() {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Don't start drawing if clicking on a redaction box or button
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-redaction-box]') || target.tagName === 'BUTTON') {
+      return;
+    }
+
     if (tool !== 'redact' || !containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
@@ -257,11 +269,21 @@ export default function PDFEditor() {
     setVerificationResult(null);
 
     try {
-      // Apply true redaction (flattens to images)
-      const redactedPdf = await redactPdfByAreas(pdfBytes, redactions);
+      // Convert coordinates from canvas scale (1.5x) back to PDF scale (1x)
+      const UI_SCALE = 1.5;
+      const pdfScaleRedactions = redactions.map(r => ({
+        ...r,
+        x: r.x / UI_SCALE,
+        y: r.y / UI_SCALE,
+        width: r.width / UI_SCALE,
+        height: r.height / UI_SCALE,
+      }));
 
-      // Verify the redaction worked
-      const verification = await verifyRedaction(redactedPdf.buffer as ArrayBuffer, redactions);
+      // Apply true redaction (flattens to images)
+      const redactedPdf = await redactPdfByAreas(pdfBytes, pdfScaleRedactions);
+
+      // Verify the redaction worked (use PDF scale coordinates)
+      const verification = await verifyRedaction(redactedPdf.buffer as ArrayBuffer, pdfScaleRedactions);
 
       if (verification.success) {
         setVerificationResult({
@@ -301,9 +323,17 @@ export default function PDFEditor() {
     setSelectedPatterns(newPatterns);
   };
 
+  // The canvas is rendered at 1.5x scale for quality
+  const RENDER_SCALE = 1.5;
+
   const currentPageRedactions = redactions.filter(r => r.pageIndex === currentPage - 1);
-  const currentPageSearchResults = searchResults.filter(r => r.pageIndex === currentPage - 1);
-  const currentPagePatternResults = patternResults.filter(r => r.pageIndex === currentPage - 1);
+  // Scale search/pattern results to match canvas render scale
+  const currentPageSearchResults = searchResults
+    .filter(r => r.pageIndex === currentPage - 1)
+    .map(r => ({ ...r, x: r.x * RENDER_SCALE, y: r.y * RENDER_SCALE, width: r.width * RENDER_SCALE, height: r.height * RENDER_SCALE }));
+  const currentPagePatternResults = patternResults
+    .filter(r => r.pageIndex === currentPage - 1)
+    .map(r => ({ ...r, x: r.x * RENDER_SCALE, y: r.y * RENDER_SCALE, width: r.width * RENDER_SCALE, height: r.height * RENDER_SCALE }));
 
   if (!pdfFile) {
     return (
@@ -473,6 +503,7 @@ export default function PDFEditor() {
             {currentPageRedactions.map((box) => (
               <div
                 key={box.id}
+                data-redaction-box="true"
                 className="absolute bg-[#ff6b35]/30 border-2 border-[#ff6b35] cursor-pointer"
                 style={{
                   left: box.x,
@@ -490,7 +521,7 @@ export default function PDFEditor() {
                     e.stopPropagation();
                     removeRedaction(box.id);
                   }}
-                  className="absolute top-0 right-0 w-5 h-5 bg-[#ef4444] rounded-full flex items-center justify-center shadow-lg"
+                  className="absolute top-0 right-0 w-5 h-5 bg-[#ef4444] rounded-full flex items-center justify-center shadow-lg z-10"
                   style={{ transform: 'translate(50%, -50%)' }}
                 >
                   <X className="w-3 h-3 text-white" />
