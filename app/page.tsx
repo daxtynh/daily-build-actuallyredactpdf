@@ -14,7 +14,9 @@ import {
   Layers,
   Eye,
   EyeOff,
-  Sparkles
+  Sparkles,
+  FileText,
+  Files
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -30,8 +32,23 @@ const PDFEditor = dynamic(() => import('@/components/PDFEditor'), {
   ),
 });
 
+const BatchProcessor = dynamic(() => import('@/components/BatchProcessor'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full max-w-3xl mx-auto">
+      <div className="drop-zone p-16 text-center">
+        <div className="spinner mx-auto mb-4" />
+        <p className="text-[#666]">Loading batch processor...</p>
+      </div>
+    </div>
+  ),
+});
+
+type AppMode = 'single' | 'batch';
+
 export default function Home() {
   const [showApp, setShowApp] = useState(false);
+  const [appMode, setAppMode] = useState<AppMode>('single');
 
   return (
     <div className="min-h-screen grid-bg relative overflow-hidden">
@@ -154,9 +171,41 @@ export default function Home() {
           <section className="max-w-7xl mx-auto px-6 py-12">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold mb-2">Redact Your PDF</h2>
-              <p className="text-[#888]">Draw boxes over sensitive content. Download a truly redacted file.</p>
+              <p className="text-[#888]">
+                {appMode === 'single'
+                  ? 'Draw boxes over sensitive content. Download a truly redacted file.'
+                  : 'Upload multiple PDFs. Auto-detect and redact sensitive patterns.'}
+              </p>
+
+              {/* Mode Tabs */}
+              <div className="flex items-center justify-center gap-2 mt-6">
+                <button
+                  onClick={() => setAppMode('single')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    appMode === 'single'
+                      ? 'bg-[#ff6b35] text-white'
+                      : 'bg-[#0a0a0a] border border-[#1a1a1a] text-[#888] hover:text-white hover:border-[#333]'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  Single File
+                </button>
+                <button
+                  onClick={() => setAppMode('batch')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    appMode === 'batch'
+                      ? 'bg-[#ff6b35] text-white'
+                      : 'bg-[#0a0a0a] border border-[#1a1a1a] text-[#888] hover:text-white hover:border-[#333]'
+                  }`}
+                >
+                  <Files className="w-4 h-4" />
+                  Batch
+                  <span className="text-xs bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">PRO</span>
+                </button>
+              </div>
             </div>
-            <PDFEditor />
+
+            {appMode === 'single' ? <PDFEditor /> : <BatchProcessor />}
           </section>
         )}
 
