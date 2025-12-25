@@ -22,7 +22,7 @@ This has caused real-world data breaches:
 - Law firms exposed privileged information
 - HIPAA violations from "redacted" patient data
 
-**ActuallyRedactPDF permanently removes content** - not just visually, but from the PDF's internal content stream.
+**ActuallyRedactPDF permanently removes content** - by flattening pages to images, the original text vectors are completely eliminated.
 
 ---
 
@@ -66,31 +66,48 @@ This has caused real-world data breaches:
 ## What Was Built
 
 ### Core Features
-1. **True PDF Redaction Engine** (`lib/pdf-redaction.ts`)
-   - Uses pdf-lib to modify PDF content streams
-   - Draws opaque black rectangles where text was
-   - Rewrites the document structure
 
-2. **Metadata Sanitization**
-   - Strips author, title, subject, keywords
-   - Removes creation dates
-   - Clears hidden document properties
+1. **TRUE Redaction Engine** (`lib/pdf-redaction.ts`)
+   - **Flattens pages to images** - text is completely removed, not just covered
+   - Renders PDF pages to canvas at 2x resolution
+   - Draws black rectangles over redaction areas
+   - Converts canvas to PNG and embeds in new PDF
+   - Original text vectors are GONE - nothing to search, copy, or extract
 
-3. **Visual PDF Editor** (`components/PDFEditor.tsx`)
+2. **Find & Redact** (Fully Implemented)
+   - Search for any text term across the document
+   - Highlights all matches in yellow
+   - One-click "Redact All Matches" button
+   - Works with case-insensitive search
+
+3. **Pattern Detection** (Fully Implemented)
+   - SSN detection (###-##-#### and similar formats)
+   - Email detection
+   - Phone number detection
+   - Credit card number detection
+   - Toggle patterns on/off individually
+   - Highlights matches in purple
+   - One-click "Redact All Patterns" button
+
+4. **Redaction Verification**
+   - After redaction, verifies no extractable text remains
+   - Shows green checkmark on successful verification
+   - Warns user if text is still found (shouldn't happen with flattening)
+
+5. **Metadata Stripping**
+   - Removes author, title, subject, keywords
+   - Clears creation dates
+   - Clean PDF with no hidden info
+
+6. **Visual PDF Editor** (`components/PDFEditor.tsx`)
    - Renders PDFs with pdfjs-dist
    - Draw-to-redact interface
    - Multi-page navigation
    - Zoom controls
-   - Redaction list management
+   - Three redaction sources: manual, search, pattern
+   - Color-coded overlay previews
 
-4. **Beautiful Landing Page** (`app/page.tsx`)
-   - Dark theme with orange accents
-   - Clear problem/solution comparison
-   - Feature highlights
-   - Three-tier pricing
-   - Call-to-action sections
-
-5. **Payment Integration** (`app/api/checkout/route.ts`)
+7. **Payment Integration** (`app/api/checkout/route.ts`)
    - Stripe Checkout ready
    - Subscription billing for Pro/Enterprise
 
@@ -98,10 +115,30 @@ This has caused real-world data breaches:
 - Next.js 16.1.1
 - TypeScript
 - Tailwind CSS
-- pdf-lib (PDF manipulation)
-- pdfjs-dist (PDF rendering)
+- pdf-lib (PDF creation)
+- pdfjs-dist (PDF rendering & text extraction)
 - Stripe (payments)
 - Vercel Analytics
+
+---
+
+## How True Redaction Works
+
+Unlike tools that just draw boxes:
+
+```
+Traditional "Redaction":
+1. Draw black rectangle over text (visual layer)
+2. Text still exists in content stream
+3. Ctrl+F still finds it, copy-paste exposes it
+
+ActuallyRedactPDF:
+1. Render page to high-res canvas
+2. Draw black rectangles on canvas
+3. Convert entire canvas to PNG image
+4. Create new PDF with image (no text layer)
+5. Result: Zero extractable text - just pixels
+```
 
 ---
 
@@ -115,6 +152,17 @@ All PDF processing happens **client-side**:
 
 ---
 
+## Updates (December 24, 2025)
+
+**Fixed critical issues:**
+- ✅ Redaction engine now truly removes text (flattens to images)
+- ✅ Find & Redact fully implemented with text search
+- ✅ Pattern detection working for SSN, email, phone, credit cards
+- ✅ Added verification step to prove redaction worked
+- ✅ All advertised features now actually work
+
+---
+
 ## Next Steps for Growth
 
 ### Immediate (This Week)
@@ -123,10 +171,9 @@ All PDF processing happens **client-side**:
 3. Add user authentication (Clerk)
 
 ### Short-term
-1. **Find & Redact**: Search for text patterns and auto-mark
-2. **Pattern Detection**: SSN, credit card, phone, email regex
-3. **Batch Processing**: Upload multiple PDFs
-4. **Saved Redaction Templates**: Reusable redaction rules
+1. Batch Processing: Upload multiple PDFs
+2. Saved Redaction Templates: Reusable redaction rules
+3. OCR Support: Handle scanned documents
 
 ### Marketing
 1. Post on r/legal, r/lawyers about redaction failures
@@ -166,5 +213,6 @@ Add via: `vercel env add VARIABLE_NAME`
 
 ---
 
-## Build Date
-December 23, 2025
+## Build Dates
+- Initial build: December 23, 2025
+- Major fixes: December 24, 2025
